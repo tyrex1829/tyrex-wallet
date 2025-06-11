@@ -4,13 +4,20 @@ import React, { useEffect, useState } from "react";
 import Button from "./ui/Button";
 import { generateMnemonic } from "bip39";
 import { SolanaWallet } from "./SolanaWalletComponent";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import {
+  CheckIcon,
+  ClipboardIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from "@heroicons/react/24/outline";
+import { deriveWalletsFromMnemonic } from "@/lib/deriveWallets";
 
 const CreateWallet = () => {
   const [inputSecretPhrase, setInputSecretPhrase] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [mnemonic, setMnemonic] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const storedMnemonic = localStorage.getItem("mnemonic");
@@ -19,6 +26,12 @@ const CreateWallet = () => {
     }
     setHydrated(true);
   }, []);
+
+  const resetMnemonic = () => {
+    setMnemonic("");
+    localStorage.removeItem("mnemonic");
+    localStorage.removeItem("solana_wallets");
+  };
 
   if (!hydrated) {
     return (
@@ -30,7 +43,7 @@ const CreateWallet = () => {
 
   if (mnemonic === "") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <div className=" flex justify-center">
         <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-12">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -43,7 +56,7 @@ const CreateWallet = () => {
 
           {/* Import Wallet Section */}
           <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
               Import Existing Wallet
             </h2>
             <div className="relative">
@@ -66,13 +79,21 @@ const CreateWallet = () => {
                 )}
               </button>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center">
               <Button
                 type="primary"
-                onClick={() => {
+                onClick={async () => {
                   if (inputSecretPhrase.trim()) {
-                    setMnemonic(inputSecretPhrase.trim());
-                    localStorage.setItem("mnemonic", inputSecretPhrase.trim());
+                    const trimmed = inputSecretPhrase.trim();
+                    setMnemonic(trimmed);
+                    localStorage.setItem("mnemonic", trimmed);
+
+                    // 🛠️ Derive wallets from imported mnemonic and save
+                    const wallets = await deriveWalletsFromMnemonic(trimmed); // make sure this is imported
+                    localStorage.setItem(
+                      "solana_wallets",
+                      JSON.stringify(wallets)
+                    );
                   }
                 }}
                 disabled={!inputSecretPhrase.trim()}
@@ -102,7 +123,7 @@ const CreateWallet = () => {
             <p className="text-gray-600 mb-6">
               Generate a new wallet with a secure 12-word phrase
             </p>
-            <div className="max-w-sm mx-auto">
+            <div className=" flex justify-center">
               <Button
                 type="primary"
                 onClick={async () => {
@@ -124,13 +145,13 @@ const CreateWallet = () => {
 
   if (mnemonic !== "") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="max-w-4xl mx-auto pt-8">
+      <div className="  flex justify-center">
+        <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
               Your Wallet Seed Phrase
             </h2>
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+            <div className="flex flex-col gap-4   bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
               <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-4">
                 {mnemonic.split(" ").map((word, index) => (
                   <div
@@ -144,6 +165,25 @@ const CreateWallet = () => {
                   </div>
                 ))}
               </div>
+              <button
+                className="ml-4 flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm justify-center"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(mnemonic);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+                title="Copy mnemonic"
+              >
+                {copied ? (
+                  <>
+                    <CheckIcon className="h-5 w-5 mr-1" /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <ClipboardIcon className="h-5 w-5 mr-1" /> Copy
+                  </>
+                )}
+              </button>
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">
                   ⚠️ Keep this phrase secure and never share it with anyone
@@ -152,7 +192,7 @@ const CreateWallet = () => {
             </div>
           </div>
 
-          <SolanaWallet mnemonic={mnemonic} />
+          <SolanaWallet mnemonic={mnemonic} resetMnemonic={resetMnemonic} />
         </div>
       </div>
     );
