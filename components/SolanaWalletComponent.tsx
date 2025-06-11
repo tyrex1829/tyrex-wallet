@@ -17,9 +17,10 @@ type Wallet = {
 
 type Mnemonic = {
   mnemonic: string;
+  resetMnemonic: () => void;
 };
 
-export function SolanaWallet({ mnemonic }: Mnemonic) {
+export function SolanaWallet({ mnemonic, resetMnemonic }: Mnemonic) {
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [index, setIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -71,6 +72,7 @@ export function SolanaWallet({ mnemonic }: Mnemonic) {
       setIndex(0);
       localStorage.removeItem("solana_wallets");
       localStorage.removeItem("mnemonic");
+      resetMnemonic();
     }
   };
 
